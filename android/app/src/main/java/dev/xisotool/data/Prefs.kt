@@ -41,9 +41,9 @@ object Prefs {
         lastDir = sp.getString("last_dir", null)
     }
 
-    fun setAfterEdit(v: AfterEdit) { afterEdit = v; sp.edit().putString("after_edit", v.key).apply() }
-    fun setMediaPatch(v: Boolean) { mediaPatch = v; sp.edit().putBoolean("media_patch", v).apply() }
-    fun setSkipSystemUpdate(v: Boolean) { skipSystemUpdate = v; sp.edit().putBoolean("skip_su", v).apply() }
-    fun setKeepScreenOn(v: Boolean) { keepScreenOn = v; sp.edit().putBoolean("keep_screen_on", v).apply() }
-    fun setLastDir(v: String) { lastDir = v; sp.edit().putString("last_dir", v).apply() }
+    fun changeAfterEdit(v: AfterEdit) { afterEdit = v; sp.edit().putString("after_edit", v.key).apply() }
+    fun changeMediaPatch(v: Boolean) { mediaPatch = v; sp.edit().putBoolean("media_patch", v).apply() }
+    fun changeSkipSystemUpdate(v: Boolean) { skipSystemUpdate = v; sp.edit().putBoolean("skip_su", v).apply() }
+    fun changeKeepScreenOn(v: Boolean) { keepScreenOn = v; sp.edit().putBoolean("keep_screen_on", v).apply() }
+    fun changeLastDir(v: String) { lastDir = v; sp.edit().putString("last_dir", v).apply() }
 }

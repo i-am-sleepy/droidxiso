@@ -383,11 +383,11 @@ fun SettingsScreen(onBack: () -> Unit) {
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .clickable { Prefs.setAfterEdit(opt) }
+                            .clickable { Prefs.changeAfterEdit(opt) }
                             .padding(vertical = 6.dp),
                         verticalAlignment = Alignment.Top,
                     ) {
-                        RadioButton(selected = Prefs.afterEdit == opt, onClick = { Prefs.setAfterEdit(opt) })
+                        RadioButton(selected = Prefs.afterEdit == opt, onClick = { Prefs.changeAfterEdit(opt) })
                         Column(Modifier.padding(start = 4.dp, top = 10.dp)) {
                             Text(opt.title, style = MaterialTheme.typography.bodyLarge)
                             Text(opt.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -401,19 +401,19 @@ fun SettingsScreen(onBack: () -> Unit) {
                     "Patch .xbe media flags when building",
                     "Used by Build, Optimize and edits. Matches upstream's default behaviour.",
                     Prefs.mediaPatch,
-                ) { Prefs.setMediaPatch(it) }
+                ) { Prefs.changeMediaPatch(it) }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 ToggleRow(
                     "Skip \$SystemUpdate by default",
                     "Pre-selects the option on the Extract screen.",
                     Prefs.skipSystemUpdate,
-                ) { Prefs.setSkipSystemUpdate(it) }
+                ) { Prefs.changeSkipSystemUpdate(it) }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 ToggleRow(
                     "Keep the screen on during operations",
                     null,
                     Prefs.keepScreenOn,
-                ) { Prefs.setKeepScreenOn(it) }
+                ) { Prefs.changeKeepScreenOn(it) }
             }
 
             XCard {

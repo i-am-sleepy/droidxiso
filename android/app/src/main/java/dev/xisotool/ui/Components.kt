@@ -320,7 +320,7 @@ fun FilePickerDialog(mode: PickMode, title: String, onDismiss: () -> Unit, onPic
                                             if (f.isDirectory) {
                                                 dir = f
                                             } else {
-                                                f.parentFile?.let { Prefs.setLastDir(it.path) }
+                                                f.parentFile?.let { Prefs.changeLastDir(it.path) }
                                                 onPicked(f)
                                             }
                                         }
@@ -353,7 +353,7 @@ fun FilePickerDialog(mode: PickMode, title: String, onDismiss: () -> Unit, onPic
                     Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
                         Box(Modifier.padding(16.dp)) {
                             PrimaryAction("Use this folder", enabled = dir.isDirectory) {
-                                Prefs.setLastDir(dir.path)
+                                Prefs.changeLastDir(dir.path)
                                 onPicked(dir)
                             }
                         }

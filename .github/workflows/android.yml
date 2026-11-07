@@ -1,0 +1,139 @@
+name: Android APK
+
+# Builds the Android app in /android into an installable APK and publishes it on the
+# repository's "Releases" page. Also runs the native regression tests against the
+# upstream extract-xiso.c, so a future upstream sync that breaks something is noticed.
+#
+# Run it by hand:  Actions tab -> "Android APK" -> Run workflow.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master, main]
+    paths:
+      - 'android/**'
+      - 'extract-xiso.c'
+      - 'xiso-android-port.zip'
+      - '.github/workflows/android.yml'
+
+permissions:
+  contents: write
+
+# one run at a time, so two quick pushes can never fight over the same files
+concurrency:
+  group: android-apk
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      # always the newest commit of the branch (an earlier run may have just unpacked the app)
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Unpack the app bundle (only if xiso-android-port.zip was uploaded)
+        id: prep
+        run: |
+          if [ -f xiso-android-port.zip ]; then
+            unzip -o -q xiso-android-port.zip
+            git rm -q xiso-android-port.zip
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add android
+            git commit -q -m "Add Android app (unpacked from xiso-android-port.zip) [skip ci]"
+            git push
+            echo "Unpacked the Android app into /android"
+          fi
+          if [ -d android/app ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Nothing to build yet"
+              echo "The folder \`android/\` is not in this repository. Upload \`xiso-android-port.zip\` to the repository root, then run this workflow again."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Native tests (original extract-xiso vs. the Android core)
+        if: steps.prep.outputs.ready == 'true'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          bash android/native-test/run_tests.sh "$PWD" 2>&1 | tee native-tests.log
+          {
+            echo "### Native tests"
+            echo '```'
+            grep -E "FAIL|PASSED|FAILED" native-tests.log || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/setup-java@v4
+        if: steps.prep.outputs.ready == 'true'
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Android SDK / NDK
+        if: steps.prep.outputs.ready == 'true'
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          [ -x "$SDKM" ] || SDKM="$(command -v sdkmanager)"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platforms;android-35" "build-tools;34.0.0" "ndk;27.0.12077973" "cmake;3.22.1"
+
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.prep.outputs.ready == 'true'
+        with:
+          gradle-version: '8.9'
+
+      - name: Build APK
+        if: steps.prep.outputs.ready == 'true'
+        working-directory: android
+        run: |
+          set -o pipefail
+          gradle --no-daemon --stacktrace assembleRelease 2>&1 | tee ../build.log
+
+      - name: Collect APK
+        if: steps.prep.outputs.ready == 'true'
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk xiso-tool.apk
+          ls -l xiso-tool.apk
+
+      - uses: actions/upload-artifact@v4
+        if: steps.prep.outputs.ready == 'true'
+        with:
+          name: xiso-tool-apk
+          path: xiso-tool.apk
+
+      - name: Publish release
+        if: steps.prep.outputs.ready == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-build-${{ github.run_number }}
+          name: XISO Tool - build ${{ github.run_number }}
+          body: |
+            Installable APK of the Android app (Android 8.0 or newer).
+            Download `xiso-tool.apk`, open it, and allow "install unknown apps" when asked.
+            Builds are signed with the same key, so a new build installs over the old one.
+          files: xiso-tool.apk
+
+      # If anything above failed, put the useful part of the log right into the run summary
+      # (easy to copy on a phone).
+      - name: Show the errors
+        if: failure()
+        run: |
+          {
+            echo "### Build failed - copy everything in the box below and send it to Claude"
+            echo '```'
+            if [ -f build.log ]; then
+              grep -n -E "error:|^e: |FAILED|What went wrong|Execution failed|not found|Could not" -A4 build.log | head -150
+              echo "----- last lines -----"
+              tail -n 40 build.log
+            else
+              echo "(no build log - the failure happened before Gradle started; open the failed step above)"
+            fi
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
